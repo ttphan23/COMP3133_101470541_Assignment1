@@ -129,27 +129,35 @@ const resolvers = {
     },
 
     async searchEmployeeByDesignationOrDepartment(_, { input }, context) {
-      requireAuth(context);
+  requireAuth(context);
 
-      const designation = (input?.designation || "").toString().trim();
-      const department = (input?.department || "").toString().trim();
+  const designation = (input?.designation || "").toString().trim();
+  const department = (input?.department || "").toString().trim();
 
-      if (!designation && !department) {
-        badRequest("Provide designation or department.");
-      }
+  if (!designation && !department) {
+    badRequest("Provide designation or department.");
+  }
 
-      const q = {};
-      if (designation) q.designation = new RegExp(`^${designation}$`, "i");
-      if (department) q.department = new RegExp(`^${department}$`, "i");
+  const conditions = [];
 
-      const employees = await Employee.find(q).sort({ created_at: -1 });
+  if (designation) {
+    conditions.push({ designation: { $regex: designation, $options: "i" } });
+  }
 
-      return {
-        success: true,
-        message: "Employees fetched successfully",
-        employees: employees.map(normalizeEmployee)
-      };
-    }
+  if (department) {
+    conditions.push({ department: { $regex: department, $options: "i" } });
+  }
+
+  const query = conditions.length === 1 ? conditions[0] : { $or: conditions };
+
+  const employees = await Employee.find(query).sort({ created_at: -1 });
+
+  return {
+    success: true,
+    message: "Employees fetched successfully",
+    employees: employees.map(normalizeEmployee)
+  };
+}
   },
 
   Mutation: {
